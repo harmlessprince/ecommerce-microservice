@@ -1,0 +1,11 @@
+server:
+  port: 8090
+spring:
+  data:
+    mongodb:
+      host: localhost
+      database: customer
+      username: codewithtee
+      password: password
+      port: 6543
+      authentication-database: admin

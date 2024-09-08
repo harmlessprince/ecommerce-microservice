@@ -1,0 +1,115 @@
+services:
+  ecommerce_postgres:
+    container_name: ecommerce_postgres_container
+    platform: linux/arm64/v8
+    image: postgres
+    environment:
+      POSTGRES_USER: codewithtee
+      POSTGRES_PASSWORD: password
+      PGDATA: /var/lib/postgresql/data
+    volumes:
+      - ecommerce_postgres:/var/lib/postgresql/data
+    ports:
+      - 6541:5432
+    networks:
+      - ecommerce_microservices_network
+
+
+  ecommerce_pgadmin:
+    container_name: ecommerce_pgadmin_container
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin@codewithtee.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-password}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - ecommerce_pgadmin:/var/lib/pgadmin
+    ports:
+      - 6542:80
+    networks:
+      - ecommerce_microservices_network
+    restart: unless-stopped
+
+  ecommerce_mongodb:
+    container_name: ecommerce_mongodb_container
+    platform: linux/arm64/v8
+    image: mongo
+    ports:
+      - 6543:27017
+    volumes:
+      - ecommerce_mongo:/etc/mongo
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=codewithtee
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    networks:
+      - ecommerce_microservices_network
+
+
+  ecommerce_mongo_express:
+    image: mongo-express
+    restart: unless-stopped
+    container_name: ecommerce_mongo_express_container
+    ports:
+      - 6544:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: codewithtee
+      ME_CONFIG_MONGODB_ADMINPASSWORD: password
+      ME_CONFIG_MONGODB_SERVER: ecommerce_mongodb
+      ME_CONFIG_BASICAUTH_PASSWORD: password
+      ME_CONFIG_BASICAUTH_USERNAME: codewithtee
+
+    networks:
+      - ecommerce_microservices_network
+
+  ecommerce_mail_dev:
+    container_name: ecommerce_mail_dev_container
+    image: maildev/maildev
+    ports:
+      - 6545:1080
+      - 6546:1025
+  ecommerce_zipkin:
+    container_name: ecommerce_zipkin_container
+    image: openzipkin/zipkin
+    ports:
+      - 9411:9411
+    networks:
+      - ecommerce_microservices_network
+
+  ecommerce_zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: ecommerce_zookeeper_container
+    environment:
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - 22181:2181
+    networks:
+      - ecommerce_microservices_network
+  ecommerce_kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: ecommerce_kafka_container
+    ports:
+      - 9092:9092
+    depends_on:
+      - ecommerce_zookeeper
+    environment:
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_ZOOKEEPER_CONNECT: ecommerce_zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+    networks:
+      - ecommerce_microservices_network
+
+
+networks:
+  ecommerce_microservices_network:
+    driver: bridge
+
+volumes:
+  ecommerce_postgres:
+  ecommerce_pgadmin:
+  ecommerce_mongo:
